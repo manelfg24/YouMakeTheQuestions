@@ -9,13 +9,17 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using Excel = Microsoft.Office.Interop.Excel;
+using Word = Microsoft.Office.Interop.Word;
+using System.Runtime.InteropServices;
+using Microsoft.Office.Interop.Excel;
 
 namespace Akinator
 {
     public partial class Form1 : Form
     {
-        public static TextBox tbEnviar;
-        public static TextBox tbPreguntaGuess;
+        public static System.Windows.Forms.TextBox tbEnviar;
+        public static System.Windows.Forms.TextBox tbPreguntaGuess;
         public static double coincidencia;
         public static string preguntaGuess;
         public Form1()
@@ -97,6 +101,67 @@ namespace Akinator
             objLanguage = null;
             appWord = null;
             return sinonimosArray;
+        }
+
+        
+        //Funcion que, dado un filepath valido, abre un documento Excel y devuelve el contenido
+        //de la primera columna como ArrayList.
+        public ArrayList GetPreguntasExcel(string filepath)
+        {
+            ArrayList preguntasArray = new ArrayList();
+
+            var appExcel = new Microsoft.Office.Interop.Excel.Application();
+            var workbook = appExcel.Workbooks.Open(filepath);
+            var sheets = workbook.Worksheets;
+            var workSheet = (Worksheet)sheets[1];
+
+            Range range = workSheet.UsedRange;
+            int rowCount = range.Rows.Count;
+
+            for (int i = 1; i <= rowCount; i++)
+            {
+                if (range.Cells[i, 1] != null)
+                {
+                    preguntasArray.Add(range.Cells[i, 1].Value.ToString());
+                }
+            }
+
+            workbook.Close();
+            appExcel.Quit();
+            System.Runtime.InteropServices.Marshal.ReleaseComObject(workbook);
+            System.Runtime.InteropServices.Marshal.ReleaseComObject(appExcel);
+            workbook = null;
+            appExcel = null;
+
+            return preguntasArray;
+
+        }
+
+
+        //Funcion que, dado un filepath valido, abre un documento Excel y añade
+        //a la primera columna la pregunta proporcionada.
+        public void AddPreguntaExcel(string filepath, string pregunta)
+        {
+            ArrayList preguntasArray = new ArrayList();
+
+            var appExcel = new Microsoft.Office.Interop.Excel.Application();
+            var workbook = appExcel.Workbooks.Open(filepath);
+            var sheets = workbook.Worksheets;
+            var workSheet = (Worksheet)sheets[1];
+
+            //TODO hacer cosas
+            Range range = workSheet.UsedRange;
+            int rowCount = range.Rows.Count;
+
+            range.Cells[rowCount + 1, 1] = pregunta;
+
+            workbook.Close();
+            appExcel.Quit();
+            System.Runtime.InteropServices.Marshal.ReleaseComObject(workbook);
+            System.Runtime.InteropServices.Marshal.ReleaseComObject(appExcel);
+            workbook = null;
+            appExcel = null;
+
         }
     }
 }
