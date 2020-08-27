@@ -28,7 +28,7 @@ namespace Akinator
             tbEnviar = textBox1;
             tbPreguntaGuess = textBox2;
 
-
+            //olalalaa
            
 
         }
@@ -59,7 +59,7 @@ namespace Akinator
                     foreach (string palabraNew in palabrasNew) //para cada palabra de la pregunta nueva
                     {
                         //TODO anadir comparacion sinonimos cuando este arreglado
-                        if (palabraBase.Equals(palabraNew)) ++count; //Si las palabras son iguales o sinonimas, + coincidencia
+                        if (palabraBase.Equals(palabraNew) || AreSinonimas(palabraBase,palabraNew)) ++count; //Si las palabras son iguales o sinonimas, + coincidencia
                     }
                 }
 
@@ -84,9 +84,9 @@ namespace Akinator
             return GetSinonimos(palabraA).Contains(palabraB);
         }
 
-        public ArrayList GetSinonimos(string palabra)
         //Funcion que, dada una palabra, devuelve un ArrayList de strings con los sinonimos
         //en español de esta palabra.
+        public ArrayList GetSinonimos(string palabra)
         {
             ArrayList sinonimosArray = new ArrayList();
             var appWord = new Microsoft.Office.Interop.Word.Application();
