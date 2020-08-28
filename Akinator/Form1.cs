@@ -71,7 +71,7 @@ namespace Akinator
                     foreach (string palabraNew in palabrasNew) //para cada palabra de la pregunta nueva
                     {
                         //TODO anadir comparacion sinonimos cuando este arreglado
-                        if (palabraBase.Equals(palabraNew) || AreSinonimas(palabraBase,palabraNew)) ++count; //Si las palabras son iguales o sinonimas, + coincidencia
+                        if (palabraBase.Equals(palabraNew)) ++count; //Si las palabras son iguales o sinonimas, + coincidencia
                     }
                 }
 
@@ -146,6 +146,8 @@ namespace Akinator
             int rowCount = range.Rows.Count;
 
             range.Cells[rowCount + 1, 1] = pregunta;
+
+            activeWorkbook.Save();
         }
 
         //Funcion que, dado un filepath valido, abre un documento Excel y añade
@@ -178,6 +180,38 @@ namespace Akinator
                 }
                 j++;
             }
+
+            activeWorkbook.Save();
+        }
+
+
+        //Boton SI
+        private void button2_Click(object sender, EventArgs e)
+        {
+            string preguntaNew = tbEnviar.Text;
+            string preguntaBase = preguntaGuess;
+
+            AddPreguntaSemejanteExcel(preguntaNew, preguntaBase);
+        }
+
+        //Boton NO
+        private void button3_Click(object sender, EventArgs e)
+        {
+            string preguntaNew = tbEnviar.Text;
+
+            AddPreguntaIneditaExcel(preguntaNew);
+        }
+
+        //Boton SALIR
+        private void button4_Click(object sender, EventArgs e)
+        {
+            activeWorkbook.Close();
+            excelApp.Quit();
+            this.Dispose();
+            this.Close();
+            
+
+            
         }
     }
 }
