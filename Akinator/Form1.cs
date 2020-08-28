@@ -13,6 +13,10 @@ using Excel = Microsoft.Office.Interop.Excel;
 using Word = Microsoft.Office.Interop.Word;
 using System.Runtime.InteropServices;
 using Microsoft.Office.Interop.Excel;
+using System.Net.Http;
+using System.Net;
+using System.IO;
+using Newtonsoft.Json;
 
 namespace Akinator
 {
@@ -27,6 +31,8 @@ namespace Akinator
         public static Excel.Workbook activeWorkbook;
         public static Excel.Sheets activeSheets;
         public static Excel.Worksheet workingSheet;
+        public static string sinonimosUrl = @"http://sesat.fdi.ucm.es:8080/servicios/rest/sinonimos/json/";
+        public static HttpClient client;
 
         public Form1()
         {
@@ -37,6 +43,8 @@ namespace Akinator
             //Excel initialization
             //TODO no olvidar cerrar y liberar lo que toque de excel
             SetupExcel();
+
+            client = null;
 
         }
 
@@ -54,24 +62,34 @@ namespace Akinator
             
             string preguntaNew = tbEnviar.Text;
 
-            ArrayList palabrasNew = new ArrayList(preguntaNew.Split(' '));
+            List<string> palabrasNew = new List<string>(preguntaNew.Split(' '));
 
-            ArrayList conjPreguntasBase = new ArrayList();
-            conjPreguntasBase = GetPreguntasExcel();
+            List<string> conjPreguntasBase = GetPreguntasExcel();
 
             coincidencia = 0.0;
+
+            List<List<string>> sinonimosFrase = new List<List<string>>();
+            for(int i= 0; i < palabrasNew.Count; i++)
+            {
+                List<string> sinonimosPalabra = GetSinonimos(sinonimosUrl + palabrasNew[i]);
+                if (sinonimosPalabra.Count > 0)
+                {
+                    sinonimosFrase.Add(sinonimosPalabra);
+                }
+            }
 
 
             foreach(string preguntaBase in conjPreguntasBase) //para cada pregunta de nuestra BD
             {
                 int count = 0;
-                ArrayList palabrasBase = new ArrayList(preguntaBase.Split(' '));
+                List<string> palabrasBase = new List<string>(preguntaBase.Split(' '));
                 foreach (string palabraBase in palabrasBase) //para cada palabra de cada pregunta de nuestra BD
                 {
                     foreach (string palabraNew in palabrasNew) //para cada palabra de la pregunta nueva
                     {
                         //TODO anadir comparacion sinonimos cuando este arreglado
                         if (palabraBase.Equals(palabraNew)) ++count; //Si las palabras son iguales o sinonimas, + coincidencia
+                        //else if (AreSinonimas(palabraBase, palabraNew)) ++count;
                     }
                 }
 
@@ -86,55 +104,69 @@ namespace Akinator
 
             //TODO quitar chivatillo de coincidencia cuando toque
             tbPreguntaGuess.Text = preguntaGuess + " - coincidencia: " + coincidencia*100 + "%";
-
+            
 
 
         }
 
-        public bool AreSinonimas(string palabraA, string palabraB)
+        public List<string> DeserializeJsonSinonimos(string json)
         {
-            bool comp = GetSinonimos(palabraA).Contains(palabraB);
-            return comp;
-        }
+            List<string> list = new List<string>();
 
-        //Funcion que, dada una palabra, devuelve un ArrayList de strings con los sinonimos
-        //en español de esta palabra.
-        public ArrayList GetSinonimos(string palabra)
-        {
-            ArrayList sinonimosArray = new ArrayList();
-            var appWord = new Microsoft.Office.Interop.Word.Application();
-            object objLanguage = Microsoft.Office.Interop.Word.WdLanguageID.wdSpanish;
-            Microsoft.Office.Interop.Word.SynonymInfo si = appWord.get_SynonymInfo(palabra, ref (objLanguage));
-            foreach (var meaning in (si.MeaningList as Array))
+            try
             {
-                sinonimosArray.Add(meaning.ToString());
+                JsonSinonimos sinonimosList = JsonConvert.DeserializeObject<JsonSinonimos>(json);
+                foreach (Sinonimo sinonimo in sinonimosList.sinonimos)
+                {
+                    list.Add(sinonimo.sinonimo);
+                }
             }
-            appWord.Quit(); //include this to ensure the related process (winword.exe) is correctly closed. 
-            System.Runtime.InteropServices.Marshal.ReleaseComObject(appWord);
-            objLanguage = null;
-            appWord = null;
-            return sinonimosArray;
+            catch
+            {
+
+            }
+            
+
+            return list;
         }
 
-        
-        //Funcion que  abre el documento Excel y devuelve el contenido
-        //de la primera columna como ArrayList.
-        public ArrayList GetPreguntasExcel()
+        public List<string> GetSinonimos(string path)
         {
-            ArrayList preguntasArray = new ArrayList();
+            if (client == null)
+            {
+                HttpClientHandler handler = new HttpClientHandler()
+                {
+                    AutomaticDecompression = DecompressionMethods.GZip | DecompressionMethods.Deflate
+                };
+                client = new HttpClient(handler);
+            }
+            HttpResponseMessage response = client.GetAsync(path).Result;
+            response.EnsureSuccessStatusCode();
+            string result = response.Content.ReadAsStringAsync().Result;
+
+            List<string> sinonimos = DeserializeJsonSinonimos(result);
+            return sinonimos;
+        }
+
+
+        //Funcion que  abre el documento Excel y devuelve el contenido
+        //de la primera columna como List.
+        public List<string> GetPreguntasExcel()
+        {
+            List<string> preguntasList = new List<string>();
 
             Range range = workingSheet.UsedRange;
             int rowCount = range.Rows.Count;
 
             for (int i = 1; i <= rowCount; i++)
             {
-                if (range.Cells[i, 1] != null)
+                if (range.Cells[i, 2] != null)
                 {
-                    preguntasArray.Add(range.Cells[i, 1].Value.ToString());
+                    preguntasList.Add(range.Cells[i, 2].Value.ToString());
                 }
             }
 
-            return preguntasArray;
+            return preguntasList;
         }
 
 
@@ -145,7 +177,8 @@ namespace Akinator
             Range range = workingSheet.UsedRange;
             int rowCount = range.Rows.Count;
 
-            range.Cells[rowCount + 1, 1] = pregunta;
+            range.Cells[rowCount + 1, 1] = "1";
+            range.Cells[rowCount + 1, 2] = pregunta;
 
             activeWorkbook.Save();
         }
@@ -161,7 +194,7 @@ namespace Akinator
 
             //TODO buscar la cell que coincida con preguntaBase
             int i = 1;
-            int j = 1;
+            int j = 2;
             bool found = false;
             while (!found && (j <= colCount))
             {
@@ -172,8 +205,9 @@ namespace Akinator
                         if (range.Cells[i,j].Value.ToString().Equals(preguntaBase))
                         {
                             found = true;
-                            while (range.Cells[i, j] != null) j++;
-                            range.Cells[i, j] = preguntaNueva;
+                            int nextPos = Convert.ToInt32(range.Cells[i, 1].Value2.ToString()) + 1; //+1 para ponerme en la proxima posicion
+                            range.Cells[i, nextPos] = preguntaNueva;
+                            range.Cells[i, 1] = Convert.ToString(nextPos);
                         }
                     }
                     i++;
