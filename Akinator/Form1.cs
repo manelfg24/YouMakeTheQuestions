@@ -22,15 +22,30 @@ namespace Akinator
         public static System.Windows.Forms.TextBox tbPreguntaGuess;
         public static double coincidencia;
         public static string preguntaGuess;
+        public static string excelBaseFilePath = @"C:\Users\manel\source\repos\YouMakeTheQuestions\excels\preguntasBase.xlsx";
+        public static Excel.Application excelApp;
+        public static Excel.Workbook activeWorkbook;
+        public static Excel.Sheets activeSheets;
+        public static Excel.Worksheet workingSheet;
+
         public Form1()
         {
             InitializeComponent();
             tbEnviar = textBox1;
             tbPreguntaGuess = textBox2;
 
-            //olalalaa
-           
+            //Excel initialization
+            //TODO no olvidar cerrar y liberar lo que toque de excel
+            SetupExcel();
 
+        }
+
+        private static void SetupExcel()
+        {
+            excelApp = new Excel.Application();
+            activeWorkbook = excelApp.Workbooks.Open(excelBaseFilePath);
+            activeSheets = activeWorkbook.Worksheets;
+            workingSheet = (Worksheet)activeSheets[1];
         }
 
         private void button1_Click(object sender, EventArgs e)
@@ -41,11 +56,8 @@ namespace Akinator
 
             ArrayList palabrasNew = new ArrayList(preguntaNew.Split(' '));
 
-            ArrayList conjPreguntasBase = new ArrayList(); //TODO conseguir coger de excel o calc todas las preguntas
-            conjPreguntasBase.Add("Es guapo");
-            conjPreguntasBase.Add("Vive en el mar");
-            conjPreguntasBase.Add("Tiene el pelo rubio");
-            conjPreguntasBase.Add("Es real");
+            ArrayList conjPreguntasBase = new ArrayList();
+            conjPreguntasBase = GetPreguntasExcel();
 
             coincidencia = 0.0;
 
@@ -81,7 +93,8 @@ namespace Akinator
 
         public bool AreSinonimas(string palabraA, string palabraB)
         {
-            return GetSinonimos(palabraA).Contains(palabraB);
+            bool comp = GetSinonimos(palabraA).Contains(palabraB);
+            return comp;
         }
 
         //Funcion que, dada una palabra, devuelve un ArrayList de strings con los sinonimos
@@ -104,18 +117,13 @@ namespace Akinator
         }
 
         
-        //Funcion que, dado un filepath valido, abre un documento Excel y devuelve el contenido
+        //Funcion que  abre el documento Excel y devuelve el contenido
         //de la primera columna como ArrayList.
-        public ArrayList GetPreguntasExcel(string filepath)
+        public ArrayList GetPreguntasExcel()
         {
             ArrayList preguntasArray = new ArrayList();
 
-            var appExcel = new Microsoft.Office.Interop.Excel.Application();
-            var workbook = appExcel.Workbooks.Open(filepath);
-            var sheets = workbook.Worksheets;
-            var workSheet = (Worksheet)sheets[1];
-
-            Range range = workSheet.UsedRange;
+            Range range = workingSheet.UsedRange;
             int rowCount = range.Rows.Count;
 
             for (int i = 1; i <= rowCount; i++)
@@ -126,42 +134,50 @@ namespace Akinator
                 }
             }
 
-            workbook.Close();
-            appExcel.Quit();
-            System.Runtime.InteropServices.Marshal.ReleaseComObject(workbook);
-            System.Runtime.InteropServices.Marshal.ReleaseComObject(appExcel);
-            workbook = null;
-            appExcel = null;
-
             return preguntasArray;
-
         }
 
 
-        //Funcion que, dado un filepath valido, abre un documento Excel y añade
+        //Funcion que abre un documento Excel y añade
         //a la primera columna la pregunta proporcionada.
-        public void AddPreguntaExcel(string filepath, string pregunta)
+        public void AddPreguntaIneditaExcel(string pregunta)
         {
-            ArrayList preguntasArray = new ArrayList();
-
-            var appExcel = new Microsoft.Office.Interop.Excel.Application();
-            var workbook = appExcel.Workbooks.Open(filepath);
-            var sheets = workbook.Worksheets;
-            var workSheet = (Worksheet)sheets[1];
-
-            //TODO hacer cosas
-            Range range = workSheet.UsedRange;
+            Range range = workingSheet.UsedRange;
             int rowCount = range.Rows.Count;
 
             range.Cells[rowCount + 1, 1] = pregunta;
+        }
 
-            workbook.Close();
-            appExcel.Quit();
-            System.Runtime.InteropServices.Marshal.ReleaseComObject(workbook);
-            System.Runtime.InteropServices.Marshal.ReleaseComObject(appExcel);
-            workbook = null;
-            appExcel = null;
+        //Funcion que, dado un filepath valido, abre un documento Excel y añade
+        //a la primera columna la pregunta proporcionada.
+        public void AddPreguntaSemejanteExcel(string preguntaNueva, string preguntaBase)
+        {
+            //TODO hacer cosas
+            Range range = workingSheet.UsedRange;
+            int rowCount = range.Rows.Count;
+            int colCount = range.Columns.Count;
 
+            //TODO buscar la cell que coincida con preguntaBase
+            int i = 1;
+            int j = 1;
+            bool found = false;
+            while (!found && (j <= colCount))
+            {
+                while(!found && (i <= rowCount))
+                {
+                    if (range.Cells[i,j] != null)
+                    {
+                        if (range.Cells[i,j].Value.ToString().Equals(preguntaBase))
+                        {
+                            found = true;
+                            while (range.Cells[i, j] != null) j++;
+                            range.Cells[i, j] = preguntaNueva;
+                        }
+                    }
+                    i++;
+                }
+                j++;
+            }
         }
     }
 }
