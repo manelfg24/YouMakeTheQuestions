@@ -17,6 +17,7 @@ using System.Net.Http;
 using System.Net;
 using System.IO;
 using Newtonsoft.Json;
+using System.Text.RegularExpressions;
 
 namespace Akinator
 {
@@ -33,6 +34,7 @@ namespace Akinator
         public static Excel.Worksheet workingSheet;
         public static string sinonimosUrl = @"http://sesat.fdi.ucm.es:8080/servicios/rest/sinonimos/json/";
         public static HttpClient client;
+        public static List<List<string>> sinonimosFrase;
 
         public Form1()
         {
@@ -58,8 +60,6 @@ namespace Akinator
 
         private void button1_Click(object sender, EventArgs e)
         {
-            //TODO FUNCION TOCHA
-            
             string preguntaNew = tbEnviar.Text;
 
             List<string> palabrasNew = new List<string>(preguntaNew.Split(' '));
@@ -68,7 +68,7 @@ namespace Akinator
 
             coincidencia = 0.0;
 
-            List<List<string>> sinonimosFrase = new List<List<string>>();
+            sinonimosFrase = new List<List<string>>();
             for(int i= 0; i < palabrasNew.Count; i++)
             {
                 List<string> sinonimosPalabra = GetSinonimos(sinonimosUrl + palabrasNew[i]);
@@ -89,7 +89,7 @@ namespace Akinator
                     {
                         //TODO anadir comparacion sinonimos cuando este arreglado
                         if (palabraBase.Equals(palabraNew)) ++count; //Si las palabras son iguales o sinonimas, + coincidencia
-                        //else if (AreSinonimas(palabraBase, palabraNew)) ++count;
+                        else if (IsInMatrix(sinonimosFrase, palabraBase)) ++count;
                     }
                 }
 
@@ -109,6 +109,27 @@ namespace Akinator
 
         }
 
+        public bool IsInMatrix(List<List<string>> matrix, string palabra)
+        {
+            bool found = false;
+            int matWidth = matrix.Count;
+            string aux;
+            int i = 0;
+            while (!found && i < matWidth)
+            {
+                int j = 0;
+                while (!found && j < matrix[i].Count)
+                {
+                    aux = matrix[i][j];
+                    aux = Regex.Replace(aux.Normalize(NormalizationForm.FormD), @"[^a-zA-z0-9 ]+", "");
+                    if (aux.Equals(palabra)) found = true;
+                    j++;
+                }
+                i++;
+            }
+            return found;
+        }
+
         public List<string> DeserializeJsonSinonimos(string json)
         {
             List<string> list = new List<string>();
@@ -125,7 +146,6 @@ namespace Akinator
             {
 
             }
-            
 
             return list;
         }
@@ -187,12 +207,12 @@ namespace Akinator
         //a la primera columna la pregunta proporcionada.
         public void AddPreguntaSemejanteExcel(string preguntaNueva, string preguntaBase)
         {
-            //TODO hacer cosas
+            //hacer cosas
             Range range = workingSheet.UsedRange;
             int rowCount = range.Rows.Count;
             int colCount = range.Columns.Count;
 
-            //TODO buscar la cell que coincida con preguntaBase
+            //buscar la cell que coincida con preguntaBase
             int i = 1;
             int j = 2;
             bool found = false;
@@ -226,6 +246,8 @@ namespace Akinator
             string preguntaBase = preguntaGuess;
 
             AddPreguntaSemejanteExcel(preguntaNew, preguntaBase);
+
+            ResetForm();
         }
 
         //Boton NO
@@ -234,6 +256,8 @@ namespace Akinator
             string preguntaNew = tbEnviar.Text;
 
             AddPreguntaIneditaExcel(preguntaNew);
+
+            ResetForm();
         }
 
         //Boton SALIR
@@ -242,10 +266,13 @@ namespace Akinator
             activeWorkbook.Close();
             excelApp.Quit();
             this.Dispose();
-            this.Close();
-            
+            this.Close(); 
+        }
 
-            
+        public void ResetForm()
+        {
+            tbEnviar.Text = "";
+            tbPreguntaGuess.Text = "";
         }
     }
 }
