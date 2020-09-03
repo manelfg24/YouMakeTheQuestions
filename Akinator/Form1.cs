@@ -78,10 +78,11 @@ namespace Akinator
             sinonimosFrase = new List<List<string>>();
             for(int i= 0; i < palabrasNew.Count; i++)
             {
+                sinonimosFrase.Add(new List<string>());
                 List<string> sinonimosPalabra = GetSinonimos(sinonimosUrl + palabrasNew[i]);
                 if (sinonimosPalabra.Count > 0)
                 {
-                    sinonimosFrase.Add(sinonimosPalabra);
+                    sinonimosFrase[i] = sinonimosPalabra;
                 }
             }
 
@@ -101,19 +102,37 @@ namespace Akinator
                 }
                 
                 double count = 0.0;
+                int repe = -1;
                 List<string> palabrasBase = new List<string>(preguntaBase.Split(' '));
-                foreach (string palabraBase in palabrasBase) //para cada palabra de cada pregunta de nuestra BD
+
+                for (int i = 0; i < palabrasBase.Count; i++)
                 {
-                    foreach (string palabraNew in palabrasNew) //para cada palabra de la pregunta nueva
+                    string palabraBase = palabrasBase[i];
+
+                    for (int j = 0; j < palabrasNew.Count; j++)
                     {
-                        //TODO anadir comparacion sinonimos cuando este arreglado
-                        if (palabraBase.Equals(palabraNew)) count = count + 1.0; //Si las palabras son iguales o sinonimas, + coincidencia
+                        string palabraNew = palabrasNew[j];
+
+                        if (!String.IsNullOrEmpty(palabraNew) && palabraBase.Equals(palabraNew))
+                        {
+                            count += (1.0 * palabraBase.Length); //Si las palabras son iguales o sinonimas, + coincidencia
+                            palabrasBase[palabrasBase.IndexOf(palabraBase)] = "";
+                            palabrasNew[palabraNew.IndexOf(palabraNew)] = "";
+                            repe = j;
+                        }
                     }
 
-                    if (IsInMatrix(sinonimosFrase, palabraBase)) count = count + 0.8;
+                    if (repe != -1)
+                    {
+                        sinonimosFrase[repe] = new List<string>();
+                    }
+                    if (!String.IsNullOrEmpty(palabraBase) && IsInMatrix(sinonimosFrase, palabraBase)) count += (0.8 * palabraBase.Length);
                 }
 
-                double ratio = (double)count / Math.Max(palabrasBase.Count, palabrasNew.Count);
+                double ratio1 = (double)count / Math.Max(preguntaBase.Length, preguntaNew.Length);
+                double ratio2 = Math.Min((double)count / Math.Min(preguntaBase.Length, preguntaNew.Length),1);
+                
+                double ratio = ((double)ratio1 + ratio2)/2;
                 if (ratio > coincidencia)
                 {
                     coincidencia = ratio;
@@ -205,9 +224,13 @@ namespace Akinator
 
             for (int i = 1; i <= rowCount; i++)
             {
-                if (range.Cells[i, 2] != null)
+                int colCount = Convert.ToInt32(range.Cells[i, 1].Value());
+                for (int j = 2; j <= colCount; j++)
                 {
-                    preguntasList.Add(range.Cells[i, 2].Value.ToString());
+                    if (range.Cells[i, j] != null)
+                    {
+                        preguntasList.Add(range.Cells[i, j].Value.ToString());
+                    }
                 }
             }
 
@@ -272,6 +295,9 @@ namespace Akinator
 
             AddPreguntaSemejanteExcel(preguntaNew, preguntaBase);
 
+            buttonSi.Enabled = false;
+            buttonNo.Enabled = false;
+
             ResetForm();
         }
 
@@ -281,6 +307,9 @@ namespace Akinator
             string preguntaNew = tbEnviar.Text;
 
             AddPreguntaIneditaExcel(preguntaNew);
+
+            buttonSi.Enabled = false;
+            buttonNo.Enabled = false;
 
             ResetForm();
         }
