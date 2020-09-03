@@ -25,6 +25,8 @@ namespace Akinator
     {
         public static System.Windows.Forms.TextBox tbEnviar;
         public static System.Windows.Forms.TextBox tbPreguntaGuess;
+        public static System.Windows.Forms.Button buttonSi;
+        public static System.Windows.Forms.Button buttonNo;
         public static double coincidencia;
         public static string preguntaGuess;
         public static string excelBaseFilePath = @"C:\Users\manel\source\repos\YouMakeTheQuestions\excels\preguntasBase.xlsx";
@@ -41,6 +43,11 @@ namespace Akinator
             InitializeComponent();
             tbEnviar = textBox1;
             tbPreguntaGuess = textBox2;
+            buttonSi = button2;
+            buttonNo = button3;
+
+            buttonSi.Enabled = false;
+            buttonNo.Enabled = false;
 
             //Excel initialization
             //TODO no olvidar cerrar y liberar lo que toque de excel
@@ -78,19 +85,32 @@ namespace Akinator
                 }
             }
 
+            bool found = false;
+
 
             foreach(string preguntaBase in conjPreguntasBase) //para cada pregunta de nuestra BD
             {
-                int count = 0;
+                
+                if (preguntaBase.Equals(preguntaNew))
+                {
+                    tbPreguntaGuess.Text = "Ya en BD! - " + preguntaBase;
+                    found = true;
+                    buttonSi.Enabled = false;
+                    buttonNo.Enabled = false;
+                    break;
+                }
+                
+                double count = 0.0;
                 List<string> palabrasBase = new List<string>(preguntaBase.Split(' '));
                 foreach (string palabraBase in palabrasBase) //para cada palabra de cada pregunta de nuestra BD
                 {
                     foreach (string palabraNew in palabrasNew) //para cada palabra de la pregunta nueva
                     {
                         //TODO anadir comparacion sinonimos cuando este arreglado
-                        if (palabraBase.Equals(palabraNew)) ++count; //Si las palabras son iguales o sinonimas, + coincidencia
-                        else if (IsInMatrix(sinonimosFrase, palabraBase)) ++count;
+                        if (palabraBase.Equals(palabraNew)) count = count + 1.0; //Si las palabras son iguales o sinonimas, + coincidencia
                     }
+
+                    if (IsInMatrix(sinonimosFrase, palabraBase)) count = count + 0.8;
                 }
 
                 double ratio = (double)count / Math.Max(palabrasBase.Count, palabrasNew.Count);
@@ -103,7 +123,12 @@ namespace Akinator
             }
 
             //TODO quitar chivatillo de coincidencia cuando toque
-            tbPreguntaGuess.Text = preguntaGuess + " - coincidencia: " + coincidencia*100 + "%";
+            if (!found)
+            {
+                buttonSi.Enabled = true;
+                buttonNo.Enabled = true;
+                tbPreguntaGuess.Text = preguntaGuess + " - coincidencia: " + coincidencia * 100 + "%";
+            }
             
 
 
@@ -197,7 +222,7 @@ namespace Akinator
             Range range = workingSheet.UsedRange;
             int rowCount = range.Rows.Count;
 
-            range.Cells[rowCount + 1, 1] = "1";
+            range.Cells[rowCount + 1, 1] = "2";
             range.Cells[rowCount + 1, 2] = pregunta;
 
             activeWorkbook.Save();
